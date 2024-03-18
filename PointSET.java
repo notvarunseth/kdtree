@@ -3,7 +3,8 @@ import edu.princeton.cs.algs4.RectHV;
 import edu.princeton.cs.algs4.SET;
 import edu.princeton.cs.algs4.StdOut;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PointSET {
 
@@ -36,19 +37,35 @@ public class PointSET {
         for (Point2D p : innerSet) {
             p.draw();
         }
+        // StdOut.println("All drawn");
     }                        // draw all points to standard draw
 
     public Iterable<Point2D> range(RectHV rect) {
-        // TODO
-        return new Iterable<Point2D>() {
-            public Iterator<Point2D> iterator() {
-                return null;
+        // return Stream.of this.innerSet
+        // return Stream
+
+        return () -> {
+            List<Point2D> output = new ArrayList<Point2D>();
+            for (Point2D p : this.innerSet) {
+                if (rect.contains(p)) {
+                    output.add(p);
+                }
             }
+            return output.iterator();
         };
     }             // all points that are inside the rectangle (or on the boundary)
 
     public Point2D nearest(Point2D p) {
-        return null;
+        double minDistance = Double.MAX_VALUE;
+        Point2D nearestPoint = null;
+        for (Point2D p2 : this.innerSet) {
+            double distance = p.distanceTo(p2);
+            if (distance < minDistance) {
+                nearestPoint = p2;
+                minDistance = distance;
+            }
+        }
+        return nearestPoint;
     }            // a nearest neighbor in the set to point p; null if the set is empty
 
     public static void main(String[] args) {
@@ -60,8 +77,19 @@ public class PointSET {
         ps1.insert(new Point2D(15, 15));
         StdOut.println("isEmpty" + ps1.isEmpty());
 
-        ps1.draw();
+        // ps1.draw();
 
-        
+        StdOut.println("Nearest" + ps1.nearest(new Point2D(11, 11)));
+        StdOut.println("Nearest" + ps1.nearest(new Point2D(11, 14)));
+        StdOut.println("Nearest" + ps1.nearest(new Point2D(15, 12)));
+
+        // check rect.
+        RectHV rect = new RectHV(10, 10, 12, 12);
+        for (Point2D p : ps1.range(rect)) {
+            StdOut.println("range" + p);
+        }
+        // rect.draw();
+        // ps1.draw();
+
     }                  // unit testing of the methods (optional)
 }
