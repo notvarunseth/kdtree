@@ -45,6 +45,9 @@ public class KdTree {
         if (p == null) {
             throw new IllegalArgumentException("");
         }
+        if (contains(p)) {
+            return;
+        }
         this.mySize++;
         if (root == null) {
             root = new Node(p);
@@ -167,7 +170,7 @@ public class KdTree {
         if (p.compareTo(node.p) == 0) {
             return node.p;
         }
-        if (pSoFar == null || p.distanceTo(node.p) < pSoFar.distanceTo(p)) {
+        if (pSoFar == null || p.distanceSquaredTo(node.p) < pSoFar.distanceSquaredTo(p)) {
             pSoFar = node.p;
         }
 
@@ -189,15 +192,15 @@ public class KdTree {
         // now check firstGo
         if (firstGo != null) {
             Point2D pNew = searchHelper(p, firstGo, pSoFar);
-            if (pNew != null && pNew.distanceTo(p) < pSoFar.distanceTo(p)) {
+            if (pNew != null && pNew.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
                 pSoFar = pNew;
             }
         }
 
-        if (secondGo != null && node.rect.distanceTo(p) < pSoFar.distanceTo(p)) {
+        if (secondGo != null && node.rect.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
             //
             Point2D pNew = searchHelper(p, secondGo, pSoFar);
-            if (pNew != null && pNew.distanceTo(p) < pSoFar.distanceTo(p)) {
+            if (pNew != null && pNew.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
                 pSoFar = pNew;
             }
         }
@@ -205,8 +208,20 @@ public class KdTree {
     }
 
     public Point2D nearest(Point2D p) {
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
         return searchHelper(p, this.root, null);
     }
+
+    public boolean contains(Point2D p) {
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
+        Point2D nearestPoint = this.nearest(p);
+        return p.equals(nearestPoint);
+    }            // does the set contain point p?
+
 
     private void rectSearchHelper(Node node, RectHV rect, List<Point2D> results) {
         if (node == null) {
@@ -215,8 +230,12 @@ public class KdTree {
         if (rect.contains(node.p)) {
             results.add(node.p);
         }
-        if (node.lb != null) {
-            Node child = node.lb;
+
+        if (node.lb != null && node.lb.container.intersects(rect)) {
+            rectSearchHelper(node.lb, rect, results);
+        }
+        if (node.rt != null && node.rt.container.intersects(rect)) {
+            rectSearchHelper(node.rt, rect, results);
         }
     }
 
@@ -264,12 +283,14 @@ public class KdTree {
         StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.15, 0.12)));
 
         // check rect.
-        RectHV rect = new RectHV(0.10, 0.10, 0.12, 0.12);
+        RectHV rect = new RectHV(0.09, 0.09, 0.12, 0.12);
         for (Point2D p : ps1.range(rect)) {
             StdOut.println("range" + p);
         }
         // rect.draw();
         // ps1.draw();
 
+        StdOut.println("Contains1? " + ps1.contains(new Point2D(0.1, 0.1)));
+        StdOut.println("Contains2? " + ps1.contains(new Point2D(0.1, 0.2)));
     }
 }

@@ -41,6 +41,9 @@ public class PointSET {
     }                        // draw all points to standard draw
 
     public Iterable<Point2D> range(RectHV rect) {
+        if (rect == null) {
+            throw new IllegalArgumentException();
+        }
         // return Stream.of this.innerSet
         // return Stream
 
@@ -56,10 +59,13 @@ public class PointSET {
     }             // all points that are inside the rectangle (or on the boundary)
 
     public Point2D nearest(Point2D p) {
-        double minDistance = Double.MAX_VALUE;
+        if (p == null) {
+            throw new IllegalArgumentException();
+        }
+        double minDistance = Double.POSITIVE_INFINITY;
         Point2D nearestPoint = null;
         for (Point2D p2 : this.innerSet) {
-            double distance = p.distanceTo(p2);
+            double distance = p.distanceSquaredTo(p2);
             if (distance < minDistance) {
                 nearestPoint = p2;
                 minDistance = distance;
