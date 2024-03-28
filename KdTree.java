@@ -2,19 +2,36 @@ import edu.princeton.cs.algs4.Point2D;
 import edu.princeton.cs.algs4.RectHV;
 import edu.princeton.cs.algs4.StdOut;
 
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 public class KdTree {
     private static class Node {
         private Point2D p;      // the point
         private RectHV rect;    // the axis-aligned rectangle corresponding to this node
+        private RectHV container;
         private Node lb;        // the left/bottom subtree
         private Node rt;        // the right/top subtree
 
         public Node(Point2D p) {
+            if (p == null) {
+                throw new IllegalArgumentException("No");
+            }
             this.p = p;
         }
+
+        private boolean isVertical() {
+            return this.rect.xmin() == this.rect.xmax();
+        }
+
+        // private Point2D lbRect() {
+        //     if (this.lb == null) {
+        //         return null;
+        //     }
+        //     if (this.isVertical()) {
+        //         //
+        //     }
+        // }
     }
 
     private Node root;
@@ -32,6 +49,7 @@ public class KdTree {
         if (root == null) {
             root = new Node(p);
             root.rect = new RectHV(p.x(), 0, p.x(), 1);
+            root.container = new RectHV(0, 0, 1, 1);
             return;
         }
 
@@ -44,7 +62,12 @@ public class KdTree {
                 if (compared <= 0) {
                     if (pointer.lb == null) {
                         pointer.lb = new Node(p);
-                        pointer.lb.rect = new RectHV(0, p.y(), pointer.rect.xmin(), p.y());
+                        pointer.lb.rect = new RectHV(pointer.container.xmin(), p.y(),
+                                                     pointer.rect.xmin(), p.y());
+                        pointer.lb.container = new RectHV(
+                                pointer.container.xmin(), pointer.container.ymin(),
+                                pointer.rect.xmax(), pointer.container.ymax()
+                        );
                         break;
                     }
                     else {
@@ -54,7 +77,12 @@ public class KdTree {
                 else {
                     if (pointer.rt == null) {
                         pointer.rt = new Node(p);
-                        pointer.rt.rect = new RectHV(pointer.rect.xmin(), p.y(), 1, p.y());
+                        pointer.rt.rect = new RectHV(pointer.rect.xmin(), p.y(),
+                                                     pointer.container.xmax(), p.y());
+                        pointer.rt.container = new RectHV(
+                                pointer.rect.xmin(), pointer.container.ymin(),
+                                pointer.container.xmax(), pointer.container.ymax()
+                        );
                         break;
                     }
                     else {
@@ -69,7 +97,12 @@ public class KdTree {
                 if (compared <= 0) {
                     if (pointer.lb == null) {
                         pointer.lb = new Node(p);
-                        pointer.lb.rect = new RectHV(p.x(), 0, p.x(), pointer.rect.ymax());
+                        pointer.lb.rect = new RectHV(p.x(), pointer.container.ymin(), p.x(),
+                                                     pointer.rect.ymax());
+                        pointer.lb.container = new RectHV(
+                                pointer.container.xmin(), pointer.container.ymin(),
+                                pointer.container.xmax(), pointer.rect.ymax()
+                        );
                         break;
                     }
                     else {
@@ -79,7 +112,12 @@ public class KdTree {
                 else {
                     if (pointer.rt == null) {
                         pointer.rt = new Node(p);
-                        pointer.rt.rect = new RectHV(p.x(), pointer.rect.ymin(), p.x(), 1);
+                        pointer.rt.rect = new RectHV(p.x(), pointer.rect.ymin(), p.x(),
+                                                     pointer.container.ymax());
+                        pointer.rt.container = new RectHV(
+                                pointer.container.xmin(), pointer.rect.ymin(),
+                                pointer.container.xmax(), pointer.container.ymax()
+                        );
                         break;
                     }
                     else {
@@ -114,16 +152,83 @@ public class KdTree {
         drawDFS(node.rt);
     }
 
+    // private class SearchResult {
+    //     public SearchResult (Node node, ) {
+    //
+    //     }
+    //
+    // }
+
+    private Point2D searchHelper(Point2D p, Node node, Point2D pSoFar) {
+        if (node == null || p == null || node.p == null) {
+            return pSoFar;
+        }
+
+        if (p.compareTo(node.p) == 0) {
+            return node.p;
+        }
+        if (pSoFar == null || p.distanceTo(node.p) < pSoFar.distanceTo(p)) {
+            pSoFar = node.p;
+        }
+
+        Node firstGo;
+        Node secondGo;
+
+
+        if ((node.rect.xmin() == node.rect.xmax() && p.x() <= node.rect.xmin()) || (
+                node.rect.ymin() == node.rect.ymax() && p.y() <= node.rect.ymin())) {
+            // go left.
+            firstGo = node.lb;
+            secondGo = node.rt;
+        }
+        else {
+            // go right
+            firstGo = node.rt;
+            secondGo = node.lb;
+        }
+        // now check firstGo
+        if (firstGo != null) {
+            Point2D pNew = searchHelper(p, firstGo, pSoFar);
+            if (pNew != null && pNew.distanceTo(p) < pSoFar.distanceTo(p)) {
+                pSoFar = pNew;
+            }
+        }
+
+        if (secondGo != null && node.rect.distanceTo(p) < pSoFar.distanceTo(p)) {
+            //
+            Point2D pNew = searchHelper(p, secondGo, pSoFar);
+            if (pNew != null && pNew.distanceTo(p) < pSoFar.distanceTo(p)) {
+                pSoFar = pNew;
+            }
+        }
+        return pSoFar;
+    }
+
     public Point2D nearest(Point2D p) {
-        return null;
+        return searchHelper(p, this.root, null);
+    }
+
+    private void rectSearchHelper(Node node, RectHV rect, List<Point2D> results) {
+        if (node == null) {
+            return;
+        }
+        if (rect.contains(node.p)) {
+            results.add(node.p);
+        }
+        if (node.lb != null) {
+            Node child = node.lb;
+        }
     }
 
     public Iterable<Point2D> range(RectHV rect) {
-        return new Iterable<Point2D>() {
-            public Iterator<Point2D> iterator() {
-                return Collections.emptyIterator();
-            }
-        };
+        if (rect == null) {
+            throw new IllegalArgumentException();
+        }
+        List<Point2D> results = new ArrayList<>();
+
+        rectSearchHelper(root, rect, results);
+
+        return results;
 
     }
 
