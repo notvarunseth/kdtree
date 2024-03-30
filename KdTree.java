@@ -1,5 +1,6 @@
 import edu.princeton.cs.algs4.Point2D;
 import edu.princeton.cs.algs4.RectHV;
+import edu.princeton.cs.algs4.StdDraw;
 import edu.princeton.cs.algs4.StdOut;
 
 import java.util.ArrayList;
@@ -23,15 +24,7 @@ public class KdTree {
         private boolean isVertical() {
             return this.rect.xmin() == this.rect.xmax();
         }
-
-        // private Point2D lbRect() {
-        //     if (this.lb == null) {
-        //         return null;
-        //     }
-        //     if (this.isVertical()) {
-        //         //
-        //     }
-        // }
+        
     }
 
     private Node root;
@@ -66,7 +59,7 @@ public class KdTree {
                     if (pointer.lb == null) {
                         pointer.lb = new Node(p);
                         pointer.lb.rect = new RectHV(pointer.container.xmin(), p.y(),
-                                                     pointer.rect.xmin(), p.y());
+                                                     pointer.rect.xmax(), p.y());
                         pointer.lb.container = new RectHV(
                                 pointer.container.xmin(), pointer.container.ymin(),
                                 pointer.rect.xmax(), pointer.container.ymax()
@@ -149,18 +142,32 @@ public class KdTree {
         if (node == null) {
             return;
         }
-        node.p.draw();
-        node.rect.draw();
+
+
+        // StdDraw.setPenRadius(0.02);
+        // StdDraw.setPenColor(StdDraw.YELLOW);
+        // node.container.draw();
+
+
         drawDFS(node.lb);
         drawDFS(node.rt);
-    }
 
-    // private class SearchResult {
-    //     public SearchResult (Node node, ) {
-    //
-    //     }
-    //
-    // }
+
+        StdDraw.setPenRadius(0.005);
+        if (node.isVertical()) {
+            StdDraw.setPenColor(StdDraw.RED);
+        }
+        else {
+            StdDraw.setPenColor(StdDraw.BLUE);
+        }
+        node.rect.draw();
+
+
+        StdDraw.setPenColor(StdDraw.BLACK);
+
+        StdDraw.setPenRadius(0.01);
+        node.p.draw();
+    }
 
     private Point2D searchHelper(Point2D p, Node node, Point2D pSoFar) {
         if (node == null || p == null || node.p == null) {
@@ -197,7 +204,7 @@ public class KdTree {
             }
         }
 
-        if (secondGo != null && node.rect.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
+        if (secondGo != null && node.rect.distanceSquaredTo(p) <= pSoFar.distanceSquaredTo(p)) {
             //
             Point2D pNew = searchHelper(p, secondGo, pSoFar);
             if (pNew != null && pNew.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
@@ -292,5 +299,7 @@ public class KdTree {
 
         StdOut.println("Contains1? " + ps1.contains(new Point2D(0.1, 0.1)));
         StdOut.println("Contains2? " + ps1.contains(new Point2D(0.1, 0.2)));
+
+
     }
 }
