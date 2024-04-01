@@ -9,10 +9,19 @@ import java.util.List;
 public class KdTree {
     private static class Node {
         private Point2D p;      // the point
-        private RectHV rect;    // the axis-aligned rectangle corresponding to this node
         private RectHV container;
         private Node lb;        // the left/bottom subtree
         private Node rt;        // the right/top subtree
+        private boolean vertical;
+
+        private RectHV getRect() {
+            if (vertical) {
+                return new RectHV(p.x(), this.container.ymin(), p.x(), this.container.ymax());
+            }
+            else {
+                return new RectHV(this.container.xmin(), p.y(), this.container.xmax(), p.y());
+            }
+        }
 
         public Node(Point2D p) {
             if (p == null) {
@@ -22,9 +31,9 @@ public class KdTree {
         }
 
         private boolean isVertical() {
-            return this.rect.xmin() == this.rect.xmax();
+            return this.vertical;
         }
-        
+
     }
 
     private Node root;
@@ -44,25 +53,26 @@ public class KdTree {
         this.mySize++;
         if (root == null) {
             root = new Node(p);
-            root.rect = new RectHV(p.x(), 0, p.x(), 1);
+            root.vertical = true;
             root.container = new RectHV(0, 0, 1, 1);
             return;
         }
 
         Node pointer = root;
         while (true) {
-            if (pointer.rect.xmin() == pointer.rect.xmax()) {
+            if (pointer.isVertical()) {
                 // vertical partition
                 // compare only x
                 double compared = (p.x() - pointer.p.x());
                 if (compared <= 0) {
                     if (pointer.lb == null) {
                         pointer.lb = new Node(p);
-                        pointer.lb.rect = new RectHV(pointer.container.xmin(), p.y(),
-                                                     pointer.rect.xmax(), p.y());
+                        // pointer.lb.rect = new RectHV(pointer.container.xmin(), p.y(),
+                        //                              pointer.rect.xmax(), p.y());
+                        pointer.lb.vertical = false;
                         pointer.lb.container = new RectHV(
                                 pointer.container.xmin(), pointer.container.ymin(),
-                                pointer.rect.xmax(), pointer.container.ymax()
+                                pointer.p.x(), pointer.container.ymax()
                         );
                         break;
                     }
@@ -73,10 +83,11 @@ public class KdTree {
                 else {
                     if (pointer.rt == null) {
                         pointer.rt = new Node(p);
-                        pointer.rt.rect = new RectHV(pointer.rect.xmin(), p.y(),
-                                                     pointer.container.xmax(), p.y());
+                        // pointer.rt.rect = new RectHV(pointer.rect.xmin(), p.y(),
+                        //                              pointer.container.xmax(), p.y());
+                        pointer.rt.vertical = false;
                         pointer.rt.container = new RectHV(
-                                pointer.rect.xmin(), pointer.container.ymin(),
+                                pointer.p.x(), pointer.container.ymin(),
                                 pointer.container.xmax(), pointer.container.ymax()
                         );
                         break;
@@ -93,11 +104,12 @@ public class KdTree {
                 if (compared <= 0) {
                     if (pointer.lb == null) {
                         pointer.lb = new Node(p);
-                        pointer.lb.rect = new RectHV(p.x(), pointer.container.ymin(), p.x(),
-                                                     pointer.rect.ymax());
+                        // pointer.lb.rect = new RectHV(p.x(), pointer.container.ymin(), p.x(),
+                        //                              pointer.rect.ymax());
+                        pointer.lb.vertical = true;
                         pointer.lb.container = new RectHV(
                                 pointer.container.xmin(), pointer.container.ymin(),
-                                pointer.container.xmax(), pointer.rect.ymax()
+                                pointer.container.xmax(), pointer.p.y()
                         );
                         break;
                     }
@@ -108,10 +120,11 @@ public class KdTree {
                 else {
                     if (pointer.rt == null) {
                         pointer.rt = new Node(p);
-                        pointer.rt.rect = new RectHV(p.x(), pointer.rect.ymin(), p.x(),
-                                                     pointer.container.ymax());
+                        // pointer.rt.rect = new RectHV(p.x(), pointer.rect.ymin(), p.x(),
+                        //                              pointer.container.ymax());
+                        pointer.rt.vertical = true;
                         pointer.rt.container = new RectHV(
-                                pointer.container.xmin(), pointer.rect.ymin(),
+                                pointer.container.xmin(), pointer.p.y(),
                                 pointer.container.xmax(), pointer.container.ymax()
                         );
                         break;
@@ -160,7 +173,7 @@ public class KdTree {
         else {
             StdDraw.setPenColor(StdDraw.BLUE);
         }
-        node.rect.draw();
+        node.getRect().draw();
 
 
         StdDraw.setPenColor(StdDraw.BLACK);
@@ -177,7 +190,7 @@ public class KdTree {
         if (p.compareTo(node.p) == 0) {
             return node.p;
         }
-        if (pSoFar == null || p.distanceSquaredTo(node.p) < pSoFar.distanceSquaredTo(p)) {
+        if (pSoFar == null || node.p.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
             pSoFar = node.p;
         }
 
@@ -185,8 +198,8 @@ public class KdTree {
         Node secondGo;
 
 
-        if ((node.rect.xmin() == node.rect.xmax() && p.x() <= node.rect.xmin()) || (
-                node.rect.ymin() == node.rect.ymax() && p.y() <= node.rect.ymin())) {
+        if ((node.isVertical() && p.x() <= node.p.x()) || (
+                !node.isVertical() && p.y() <= node.p.y())) {
             // go left.
             firstGo = node.lb;
             secondGo = node.rt;
@@ -198,18 +211,12 @@ public class KdTree {
         }
         // now check firstGo
         if (firstGo != null) {
-            Point2D pNew = searchHelper(p, firstGo, pSoFar);
-            if (pNew != null && pNew.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
-                pSoFar = pNew;
-            }
+            pSoFar = searchHelper(p, firstGo, pSoFar);
         }
 
-        if (secondGo != null && node.rect.distanceSquaredTo(p) <= pSoFar.distanceSquaredTo(p)) {
-            //
-            Point2D pNew = searchHelper(p, secondGo, pSoFar);
-            if (pNew != null && pNew.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(p)) {
-                pSoFar = pNew;
-            }
+        if (secondGo != null && secondGo.container.distanceSquaredTo(p) < pSoFar.distanceSquaredTo(
+                p)) {
+            pSoFar = searchHelper(p, secondGo, pSoFar);
         }
         return pSoFar;
     }
@@ -262,37 +269,58 @@ public class KdTree {
     public static void main(String[] args) {
         KdTree tree = new KdTree();
         tree.insert(new Point2D(0.7, 0.2));
-        tree.draw();
+        // tree.draw();
 
         tree.insert(new Point2D(0.5, 0.4));
-        tree.draw();
+        // tree.draw();
         tree.insert(new Point2D(0.2, 0.3));
-        tree.draw();
+        // tree.draw();
         tree.insert(new Point2D(0.4, 0.7));
-        tree.draw();
+        // tree.draw();
         tree.insert(new Point2D(0.9, 0.6));
-        tree.draw();
+        // tree.draw();
 
         KdTree ps1 = new KdTree();
         StdOut.println("isEmpty" + ps1.isEmpty());
+        ps1.insert(new Point2D(0.0, 0.10));
+        ps1.insert(new Point2D(0.001, 0.10));
+        ps1.insert(new Point2D(0.001, 0.1001));
+        ps1.insert(new Point2D(0.0, 0.1001));
+        ps1.insert(new Point2D(0.375, 0.0));
+        ps1.insert(new Point2D(0.375, 0.0625));
         ps1.insert(new Point2D(0.10, 0.10));
         ps1.insert(new Point2D(0.10, 0.15));
         ps1.insert(new Point2D(0.15, 0.10));
         ps1.insert(new Point2D(0.15, 0.15));
+        ps1.insert(new Point2D(0.1223, 0.1439));
+        ps1.insert(new Point2D(0.09123123, 0.12323));
+        ps1.insert(new Point2D(0.1123423, 0.12234234));
+        ps1.insert(new Point2D(0.13132123, 0.10123123));
+        ps1.insert(new Point2D(0.102342, 0.10123123123));
+        ps1.insert(new Point2D(0.8359375, 0.0));
+        ps1.insert(new Point2D(0.84375, 0.0078125));
+        ps1.insert(new Point2D(0.0, 0.2421875));
+        ps1.insert(new Point2D(0.0, 0.25));
+
         StdOut.println("isEmpty" + ps1.isEmpty());
 
         // ps1.draw();
 
         // ps1.draw();
 
+        StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.8359375, 0.0)));
+        StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.375, 0.0)));
+        StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.0, 0.10)));
         StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.11, 0.11)));
         StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.11, 0.14)));
         StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.15, 0.12)));
+        StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.0, 0.25)));
+        StdOut.println("Nearest: " + ps1.nearest(new Point2D(0.0, 0.2421875)));
 
         // check rect.
         RectHV rect = new RectHV(0.09, 0.09, 0.12, 0.12);
         for (Point2D p : ps1.range(rect)) {
-            StdOut.println("range" + p);
+            StdOut.println("range: " + p);
         }
         // rect.draw();
         // ps1.draw();
